@@ -1,0 +1,90 @@
+name: Test
+
+on: push
+
+env:
+  DOCKER_IMAGE: ${{ github.repository }}
+  # Specify the path to the Docker compose file. It will be used by Docker Compose
+  COMPOSE_FILE: docker-compose.test.yml
+  # The Github token used by Danger gem - for automated code review - to comment on the PR
+  DANGER_GITHUB_API_TOKEN: ${{ github.token }}
+
+jobs:
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel previous runs
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ github.token }}
+
+      - name: Checks-out the repository
+        uses: actions/checkout@v2.3.4
+
+      - name: Set env BRANCH_TAG
+        uses: nimblehq/branch-tag-action@v1.2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1.6.0
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker pull
+        if: env.BRANCH_TAG != 'latest' && env.BRANCH_TAG != 'development'
+        run: docker-compose pull test || true
+
+      - name: Build Docker image
+        run: |
+          bin/docker-prepare
+          docker-compose build
+
+      - name: Docker push
+        run: docker-compose push test
+
+  unit_tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checks-out the repository
+        uses: actions/checkout@v2.3.4
+
+      - name: Set env BRANCH_TAG
+        uses: nimblehq/branch-tag-action@v1.2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1.6.0
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker pull
+        run: docker-compose pull test || true
+
+      - name: Run Unit Tests
+        run: docker-compose run test bundle exec rspec --exclude-pattern "spec/systems/**/*_spec.rb" --profile
+
+  system_tests:
+    name: Sytem tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checks-out the repository
+        uses: actions/checkout@v2.3.4
+
+      - name: Set env BRANCH_TAG
+        uses: nimblehq/branch-tag-action@v1.2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1.6.0
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker pull
+        run: docker-compose pull test || true
+
+      - name: Run System Tests
+        run: docker-compose run test bundle exec rspec spec/systems --profile
