@@ -1,5 +1,5 @@
 {
-  "name": "ruby_gscraper",
+  "name": "ruby-gscraper",
   "private": true,
   "scripts": {
     "lint": "eslint . --color",
@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@nimblehq/eslint-config-nimble": "2.1.1",
-    "webpack-dev-server": "3.11.0"
+    "webpack-dev-server": "3.11.1"
   },
   "version": "0.1.0"
 }
